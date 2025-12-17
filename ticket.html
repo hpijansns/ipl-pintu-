@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your IPL Ticket</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- STYLES --- */
+        :root{
+            --page-w: 800px;
+            --paper: #fff;
+            --muted: #666;
+            --blue: #0b81d1;
+            --blue-deep: #0468a8;
+            --highlight: #f84464;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #333;
+            padding: 20px;
+        }
+        
+        /* TICKET CONTAINER */
+        .ticket {
+            width: 100%;
+            max-width: var(--page-w);
+            background: var(--paper);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        /* WATERMARK */
+        .watermark {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 100px;
+            font-weight: 900;
+            color: rgba(0,0,0,0.03);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 0;
+            font-family: 'Oswald', sans-serif;
+        }
+
+        /* HEADER STRIP */
+        .header-strip {
+            background: #f8f8f8;
+            border-bottom: 2px dashed #ddd;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--muted);
+            z-index: 1;
+        }
+        .header-strip b { display: block; font-size: 13px; color: #000; margin-top: 2px; }
+
+        /* MAIN BODY */
+        .main-body {
+            display: flex;
+            padding: 30px;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1;
+        }
+        
+        .team-logos {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 120px;
+        }
+        .team-logos img {
+            width: 80px; height: 80px;
+            object-fit: contain;
+        }
+        .vs-badge {
+            font-weight: 900; font-size: 14px;
+            background: #eee; padding: 2px 8px; border-radius: 10px;
+        }
+
+        .match-details {
+            flex: 1;
+            text-align: center;
+            padding: 0 20px;
+        }
+        .match-details h1 {
+            margin: 0; font-size: 24px;
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            color: #111;
+        }
+        .date-time {
+            font-size: 14px; font-weight: bold;
+            color: var(--highlight);
+            margin: 8px 0;
+        }
+        .stadium { font-size: 13px; color: #555; font-weight: 500;}
+        .valid-tag {
+            display: inline-block; margin-top: 10px;
+            background: #e3f2fd; color: var(--blue-deep);
+            padding: 4px 12px; border-radius: 4px;
+            font-size: 11px; font-weight: bold;
+            border: 1px solid var(--blue);
+        }
+
+        .qr-area {
+            text-align: center;
+            width: 120px;
+        }
+        .qr-area canvas { display: block; margin: 0 auto; }
+        .qr-area span { font-size: 10px; color: #777; display: block; margin-top: 5px; }
+
+        /* FOOTER INFO */
+        .footer-info {
+            background: linear-gradient(90deg, var(--blue), var(--blue-deep));
+            color: #fff;
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            z-index: 1;
+        }
+        .footer-info div { flex: 1; border-right: 1px solid rgba(255,255,255,0.2); }
+        .footer-info div:last-child { border: none; }
+        .footer-info small { display: block; font-size: 10px; opacity: 0.8; margin-bottom: 2px; text-transform: uppercase; }
+        .footer-info span { font-size: 18px; font-weight: 900; font-family: 'Oswald', sans-serif; }
+
+        /* BUTTONS */
+        .action-buttons { margin-top: 25px; display: flex; gap: 15px; }
+        button, .btn-link {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        #downloadBtn { background: var(--highlight); color: #fff; }
+        #downloadBtn:hover { background: #d02040; }
+        .btn-link { background: #fff; color: #333; }
+
+        @media(max-width: 650px){
+            .main-body { flex-direction: column; text-align: center; gap: 20px; }
+            .team-logos { flex-direction: row; width: auto; gap: 20px; }
+            .footer-info { flex-wrap: wrap; }
+            .footer-info div { width: 50%; flex: auto; border: none; margin-bottom: 10px; }
+        }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+    <div class="ticket" id="ticketCard">
+        <div class="watermark">IPL 2025</div>
+
+        <div class="header-strip">
+            <div><small>TICKET ID</small><b id="tktId">---</b></div>
+            <div style="text-align:center"><small>BOOKING REF</small><b id="bkId">---</b></div>
+            <div style="text-align:right"><small>TOTAL PAID</small><b id="price">---</b></div>
+        </div>
+
+        <div class="main-body">
+            <div class="team-logos">
+                <img id="img1" src="" alt="T1">
+                <div class="vs-badge">VS</div>
+                <img id="img2" src="" alt="T2">
+            </div>
+
+            <div class="match-details">
+                <div class="date-time" id="dateDisplay">--</div>
+                <h1 id="teamsDisplay">LOADING...</h1>
+                <div class="stadium" id="stadiumDisplay">--</div>
+                <div class="valid-tag">OFFICIAL ENTRY PASS</div>
+            </div>
+
+            <div class="qr-area">
+                <canvas id="qr"></canvas>
+                <span>SCAN AT GATE</span>
+            </div>
+        </div>
+
+        <div class="footer-info">
+            <div><small>GATE</small><span id="gate">--</span></div>
+            <div><small>BLOCK</small><span id="zone">--</span></div>
+            <div><small>ROW</small><span id="row">--</span></div>
+            <div><small>SEAT</small><span id="seat">--</span></div>
+            <div><small>TIME</small><span id="time">--</span></div>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button id="downloadBtn">Download Ticket</button>
+        <a href="index.html" class="btn-link">Back to Home</a>
+    </div>
+
+    <script>
+        // 1. LOAD DATA
+        const booking = JSON.parse(localStorage.getItem('currentBookingData'));
+        const defaultLogo = "https://iili.io/K8L5Ots.jpg";
+
+        if(booking){
+            // 2. GENERATE RANDOM SEAT DATA (Since we only asked for category)
+            const randomGate = Math.floor(Math.random() * 12) + 1;
+            const randomRow = String.fromCharCode(65 + Math.floor(Math.random() * 20)); // A-T
+            const randomSeat = Math.floor(Math.random() * 100) + 1;
+            
+            // Generate Block Name based on Ticket Type
+            let blockName = "STAND C";
+            if(booking.seatType.includes("VIP")) blockName = "VIP BOX";
+            else if(booking.seatType.includes("Premium")) blockName = "NORTH PAVILION";
+            else if(booking.seatType.includes("General")) blockName = "EAST STAND";
+
+            // 3. FILL HTML
+            document.getElementById('tktId').innerText = "IPL-" + booking.bookingId.slice(-6).toUpperCase();
+            document.getElementById('bkId').innerText = booking.bookingId;
+            document.getElementById('price').innerText = "₹" + booking.total;
+
+            const m = booking.matchDetails;
+            document.getElementById('teamsDisplay').innerText = m.teams;
+            document.getElementById('dateDisplay').innerText = `${m.date} | IPL 2025`;
+            document.getElementById('stadiumDisplay').innerText = m.stadium;
+            document.getElementById('time').innerText = m.time || "7:30 PM";
+
+            document.getElementById('img1').src = m.img1 || defaultLogo;
+            document.getElementById('img2').src = m.img2 || defaultLogo;
+
+            // Seat Details
+            document.getElementById('gate').innerText = "G" + randomGate;
+            document.getElementById('zone').innerText = blockName;
+            document.getElementById('row').innerText = randomRow;
+            document.getElementById('seat').innerText = randomSeat;
+
+            // 4. GENERATE QR CODE
+            new QRious({
+                element: document.getElementById('qr'),
+                value: `IPL:${booking.bookingId}|UTR:${booking.utr}|SEAT:${randomSeat}`,
+                size: 100,
+                level: 'H'
+            });
+
+            // Trigger confetti on load
+            setTimeout(() => {
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            }, 500);
+
+        } else {
+            alert("No Ticket Found! Please book first.");
+            window.location.href = "index.html";
+        }
+
+        // 5. DOWNLOAD LOGIC
+        document.getElementById('downloadBtn').addEventListener('click', function(){
+            const btn = this;
+            const originalText = btn.innerText;
+            
+            // Hide buttons temporarily
+            document.querySelector('.action-buttons').style.display = 'none';
+
+            html2canvas(document.getElementById('ticketCard'), { scale: 3 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `IPL-TICKET-${booking.bookingId}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                
+                // Show buttons again
+                document.querySelector('.action-buttons').style.display = 'flex';
+                btn.innerText = "Downloaded!";
+                setTimeout(() => btn.innerText = originalText, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
