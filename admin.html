@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IPL Admin Panel — Manage Matches</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root{--accent:#f84464;--accent-2:#c4242b;--bg:#f5f6f8;--card:#fff;--muted:#777}
+    *{box-sizing:border-box;font-family:'Roboto',sans-serif}
+    body{margin:0;background:var(--bg);color:#111}
+    header{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+    header h1{font-size:18px;margin:0;font-weight:900}
+    .wrap{max-width:1100px;margin:26px auto;padding:0 16px}
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:20px}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 10px 24px rgba(0,0,0,0.06)}
+    label{display:block;font-weight:700;margin:10px 0 6px}
+    input, textarea, select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e9; margin-bottom: 10px;}
+    button{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer; width: 100%;}
+    button.secondary{background:#444}
+    button.danger{background:#e83b3b; margin-top: 5px;}
+    .match-item{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #eee;border-radius:10px;margin-bottom:10px;background:#fff;}
+    .match-item img{width:50px;height:50px;object-fit:cover;border-radius:5px;}
+    .hidden{display:none;}
+    
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>IPL Admin Dashboard</h1>
+    <button id="logoutBtn" class="secondary" style="width:auto; display:none;">Logout</button>
+  </header>
+
+  <main class="wrap">
+    
+    <div id="login-section" class="card" style="max-width:400px; margin: 50px auto;">
+      <h3 style="text-align:center">Admin Login</h3>
+      <input id="u_name" type="text" placeholder="Username (7627055204)">
+      <input id="u_pass" type="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="dashboard-section" class="grid hidden">
+      
+      <div>
+        <div class="card">
+          <h3>Add New Match</h3>
+          <label>Teams (e.g. MI vs CSK)</label>
+          <input id="m_teams" type="text" placeholder="Team A vs Team B">
+          
+          <label>Date & Time</label>
+          <input id="m_date" type="date">
+          <input id="m_time" type="time">
+          
+          <label>Stadium</label>
+          <input id="m_stadium" type="text" placeholder="Wankhede Stadium">
+          
+          <label>Team 1 Logo URL</label>
+          <input id="m_img1" type="text" placeholder="https://...">
+          
+          <label>Team 2 Logo URL</label>
+          <input id="m_img2" type="text" placeholder="https://...">
+          
+          <button onclick="addMatch()">Save Match</button>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h3>Website Settings</h3>
+            <label>Banner Image URL</label>
+            <input id="s_banner" type="text">
+            <label>Logo Image URL</label>
+            <input id="s_logo" type="text">
+            <button class="secondary" onclick="saveSettings()">Update Settings</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>Live Matches List</h3>
+          <button onclick="loadMatches()" class="secondary" style="margin-bottom:10px;">Refresh List</button>
+          <div id="matchesList">Loading...</div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h3>Recent Bookings</h3>
+            <div id="bookingsList">Loading...</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // --- FIREBASE CONFIG (YOURS) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyA98b78eCXflbhLR8fCb4pqyCaZRXqxfjU",
+      authDomain: "ipl-tickets-1060f.firebaseapp.com",
+      databaseURL: "https://ipl-tickets-1060f-default-rtdb.firebaseio.com",
+      projectId: "ipl-tickets-1060f",
+      storageBucket: "ipl-tickets-1060f.firebasestorage.app",
+      messagingSenderId: "50763894108",
+      appId: "1:50763894108:web:6ff181b737afe2330a4599"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // --- LOGIN LOGIC ---
+    const CRED = { u: '7627055204', p: 'Pooja2005' };
+
+    function checkAuth(){
+        if(localStorage.getItem('admin_logged') === 'true'){
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('logoutBtn').style.display = 'block';
+            loadMatches();
+            loadBookings();
+        }
+    }
+    
+    function login(){
+        const u = document.getElementById('u_name').value;
+        const p = document.getElementById('u_pass').value;
+        if(u === CRED.u && p === CRED.p){
+            localStorage.setItem('admin_logged', 'true');
+            checkAuth();
+        } else {
+            alert('Wrong ID or Password');
+        }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+        localStorage.removeItem('admin_logged');
+        location.reload();
+    });
+
+    // --- MATCH FUNCTIONS ---
+    function addMatch(){
+        const teams = document.getElementById('m_teams').value;
+        const date = document.getElementById('m_date').value;
+        const time = document.getElementById('m_time').value;
+        const stadium = document.getElementById('m_stadium').value;
+        const img1 = document.getElementById('m_img1').value;
+        const img2 = document.getElementById('m_img2').value;
+
+        if(!teams || !date) return alert("Teams and Date are required!");
+
+        const matchId = Date.now();
+        db.ref('matches/' + matchId).set({
+            teams, date, time, stadium, img1, img2
+        }).then(()=>{
+            alert("Match Added!");
+            loadMatches();
+        });
+    }
+
+    function loadMatches(){
+        const div = document.getElementById('matchesList');
+        div.innerHTML = "Loading...";
+        
+        db.ref('matches').once('value', (snap)=>{
+            const data = snap.val();
+            div.innerHTML = "";
+            if(!data) { div.innerHTML = "No matches found."; return; }
+
+            Object.entries(data).forEach(([key, val])=>{
+                div.innerHTML += `
+                    <div class="match-item">
+                        <img src="${val.img1 || 'https://via.placeholder.com/50'}" onerror="this.src='https://via.placeholder.com/50'">
+                        <div style="flex:1">
+                            <b>${val.teams}</b><br>
+                            <small>${val.date} | ${val.stadium}</small>
+                        </div>
+                        <button class="danger" onclick="deleteMatch('${key}')" style="width:auto; padding:5px 10px;">X</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function deleteMatch(id){
+        if(confirm("Delete this match?")){
+            db.ref('matches/' + id).remove().then(()=> loadMatches());
+        }
+    }
+
+    // --- BOOKINGS & SETTINGS ---
+    function loadBookings(){
+        const div = document.getElementById('bookingsList');
+        db.ref('bookings').limitToLast(10).once('value', (snap)=>{
+            const data = snap.val();
+            div.innerHTML = "";
+            if(!data) { div.innerHTML = "No bookings yet."; return; }
+
+            Object.values(data).reverse().forEach((b)=>{
+                div.innerHTML += `
+                    <div class="match-item" style="display:block;">
+                        <b>${b.bookingId}</b> - <span style="color:green">₹${b.total}</span><br>
+                        <small>UTR: ${b.utr}</small><br>
+                        <small>${b.seatType} (${b.qty}) - ${b.matchDetails.teams}</small>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function saveSettings(){
+        const banner = document.getElementById('s_banner').value;
+        const logo = document.getElementById('s_logo').value;
+        db.ref('settings').set({ banner, logo }).then(()=> alert("Settings Saved!"));
+    }
+
+    // Init
+    checkAuth();
+  </script>
+</body>
+</html>
