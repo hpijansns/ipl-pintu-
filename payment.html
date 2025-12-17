@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment - IPL Tickets</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body {margin:0;padding:0;font-family:'Roboto',sans-serif;background:#f0f0f0;color:#000;}
+.container{max-width:800px;margin:30px auto;padding:20px;}
+.payment-box{background:#fff;border-radius:15px;padding:30px;box-shadow:0 12px 25px rgba(0,0,0,0.1);text-align:center;border-top:6px solid #0b81d1;}
+.payment-box h2{font-size:26px;margin-bottom:15px;color:#000;font-weight:700;}
+
+.match-info{text-align:center;margin-bottom:20px;line-height:1.6; background: #f9f9f9; padding: 15px; border-radius: 10px;}
+.match-info img{width:60px;height:60px;object-fit:contain;border-radius:50%;margin:5px; background: #fff; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+
+.total-amount{font-size:24px;font-weight:900;margin:15px 0;color:#d32f2f;}
+
+.qr-container{margin:20px 0;display:inline-block;padding:15px;border:2px dashed #0b81d1;border-radius:15px;background:#fff;}
+.qr-container img{width:200px;height:200px;}
+
+input#utrInput{padding:12px;font-size:16px;width:90%;max-width:260px;border-radius:8px;border:1px solid #ccc;margin-top:15px;text-align:center; outline: none;}
+input#utrInput:focus{border-color: #0b81d1;}
+
+button#payWithUTR{padding:14px 25px;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;color:#fff;background:linear-gradient(90deg,#4caf50,#43a047);margin-top:20px;transition:0.3s; width: 100%; max-width: 300px;}
+button#payWithUTR:hover{background:linear-gradient(90deg,#43a047,#388e3c);}
+button#payWithUTR:disabled{background: #ccc; cursor: not-allowed;}
+
+.cancel-btn {margin-top:15px; background:none; border:none; color:#777; cursor:pointer; text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="payment-box">
+    <h2>Confirm & Pay</h2>
+
+    <div class="match-info" id="matchInfo">Loading...</div>
+
+    <p class="total-amount" id="totalAmount">₹0</p>
+
+    <div class="qr-container">
+      <img src="https://iili.io/K8pC8WG.png" alt="Scan to Pay QR">
+    </div>
+
+    <p style="color:#555;">Scan QR & Enter Transaction ID (UTR):</p>
+    <input type="text" id="utrInput" placeholder="Enter 12-digit UTR No.">
+
+    <br>
+    <button id="payWithUTR">Verify & Download Ticket</button>
+    <br>
+    <button class="cancel-btn" onclick="window.history.back()">Cancel / Go Back</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// --- 1. FIREBASE CONFIG ---
+const firebaseConfig = {
+  apiKey: "AIzaSyA98b78eCXflbhLR8fCb4pqyCaZRXqxfjU",
+  authDomain: "ipl-tickets-1060f.firebaseapp.com",
+  databaseURL: "https://ipl-tickets-1060f-default-rtdb.firebaseio.com",
+  projectId: "ipl-tickets-1060f",
+  storageBucket: "ipl-tickets-1060f.firebasestorage.app",
+  messagingSenderId: "50763894108",
+  appId: "1:50763894108:web:6ff181b737afe2330a4599"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// --- 2. LOAD BOOKING DATA ---
+const ticketData = JSON.parse(localStorage.getItem('paymentInfo'));
+const defaultLogo = "https://iili.io/K8L5Ots.jpg";
+
+if(!ticketData){ 
+  alert("No booking data found. Redirecting to home.");
+  window.location.href = "index.html";
+}
+
+// Display Info
+const m = ticketData.matchDetails;
+document.getElementById('matchInfo').innerHTML = `
+  <div style="font-weight:bold; font-size:18px;">${m.teams}</div>
+  <div style="font-size:13px; color:#666;">${m.date} | ${m.stadium}</div>
+  <div style="margin-top:10px;">
+      <img src="${m.img1 || defaultLogo}">
+      <img src="${m.img2 || defaultLogo}">
+  </div>
+  <hr style="border:0; border-top:1px dashed #ddd; margin:10px 0;">
+  <div>
+      <strong>Seat:</strong> ${ticketData.seatType} | <strong>Qty:</strong> ${ticketData.qty}
+  </div>
+`;
+
+document.getElementById('totalAmount').textContent = `₹${ticketData.total}`;
+
+// --- 3. PAYMENT LOGIC ---
+document.getElementById('payWithUTR').addEventListener('click', ()=>{
+  const utr = document.getElementById('utrInput').value.trim();
+  const btn = document.getElementById('payWithUTR');
+  
+  // Basic Validation (12 digits usually for UPI)
+  if(utr.length < 10){
+    alert("Please enter a valid Transaction ID / UTR.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Verifying...";
+
+  // Create Final Booking Object
+  const finalBookingData = {
+    ...ticketData,
+    utr: utr,
+    bookingId: 'IPL' + Date.now().toString().slice(-8) + Math.floor(Math.random()*100),
+    timestamp: new Date().toISOString(),
+    status: 'Confirmed'
+  };
+
+  // 1. Save to Firebase Database (so Admin sees it)
+  db.ref('bookings/' + finalBookingData.bookingId).set(finalBookingData)
+    .then(()=>{
+      // 2. Save locally for Ticket Page
+      localStorage.setItem('currentBookingData', JSON.stringify(finalBookingData));
+      
+      // 3. Redirect
+      alert("Payment Successful! Generating Ticket...");
+      window.location.href = "ticket.html";
+    })
+    .catch((err)=>{
+      console.error(err);
+      alert("Server Error. Please try again.");
+      btn.disabled = false;
+      btn.innerText = "Verify & Download Ticket";
+    });
+});
+</script>
+
+</body>
+</html>
