@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Ticket Booking - Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* --- GLOBAL STYLES --- */
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;}
+body{background:#f0f2f5; padding-bottom: 50px;}
+
+/* SPLASH SCREEN */
+#splash-screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #f84464, #c4242b);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; transition: opacity 0.8s ease-out;
+}
+#splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+#splash-screen img { width: 60%; max-width: 300px; animation: pulse 1.2s infinite; }
+
+@keyframes pulse { from { transform: scale(0.95); opacity: 0.8; } to { transform: scale(1.05); opacity: 1; } }
+
+/* HEADER */
+header{
+    background: #fff; border-bottom: 4px solid #f84464;
+    padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+}
+.logo { height: 40px; }
+.admin-link { text-decoration: none; color: #333; font-weight: bold; font-size: 12px; border: 1px solid #ddd; padding: 5px 10px; border-radius: 20px;}
+
+/* HERO BANNER */
+.hero { width: 100%; max-height: 250px; overflow: hidden; display: flex; justify-content: center; background: #000;}
+.hero img { width: 100%; height: auto; object-fit: cover; opacity: 0.9; }
+
+/* MATCH CARDS */
+.container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+.section-title { font-size: 24px; font-weight: 900; margin-bottom: 20px; color: #222; text-transform: uppercase; border-left: 5px solid #f84464; padding-left: 10px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+
+.card {
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08); transition: transform 0.3s;
+    border: 1px solid #eee;
+}
+.card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+
+.card-header {
+    background: linear-gradient(to right, #f9f9f9, #fff);
+    padding: 15px; display: flex; align-items: center; justify-content: space-around;
+    border-bottom: 1px dashed #ddd;
+}
+.team-logo { width: 70px; height: 70px; object-fit: contain; }
+.vs { font-weight: 900; font-size: 24px; color: #f84464; font-style: italic; }
+
+.card-body { padding: 15px; text-align: center; }
+.match-title { font-size: 18px; font-weight: 700; margin-bottom: 5px; color: #111; }
+.match-meta { font-size: 14px; color: #666; margin-bottom: 15px; }
+.match-meta span { display: block; margin-top: 3px; }
+
+.book-btn {
+    display: block; width: 100%; padding: 12px;
+    background: #f84464; color: #fff; border: none;
+    font-size: 16px; font-weight: 700; border-radius: 8px;
+    cursor: pointer; text-transform: uppercase;
+}
+.book-btn:hover { background: #d02040; }
+
+/* LOADING STATE */
+.loading-text { text-align: center; padding: 50px; color: #777; font-size: 18px; }
+</style>
+</head>
+<body>
+
+<div id="splash-screen">
+    <img src="https://iili.io/K4eSZml.png" alt="IPL Loading">
+</div>
+
+<header>
+    <img id="nav-logo" src="https://iili.io/K4fT3wQ.png" class="logo" alt="Logo">
+    <a href="admin.html" class="admin-link">Admin Login</a>
+</header>
+
+<div class="hero">
+    <img id="banner-img" src="https://iili.io/K8L5Ots.jpg" alt="Banner">
+</div>
+
+<div class="container">
+    <h2 class="section-title">Upcoming Matches</h2>
+    <div id="matches-grid" class="grid">
+        <div class="loading-text">Loading Matches...</div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// --- 1. FIREBASE CONFIG ---
+const firebaseConfig = {
+  apiKey: "AIzaSyA98b78eCXflbhLR8fCb4pqyCaZRXqxfjU",
+  authDomain: "ipl-tickets-1060f.firebaseapp.com",
+  databaseURL: "https://ipl-tickets-1060f-default-rtdb.firebaseio.com",
+  projectId: "ipl-tickets-1060f",
+  storageBucket: "ipl-tickets-1060f.firebasestorage.app",
+  messagingSenderId: "50763894108",
+  appId: "1:50763894108:web:6ff181b737afe2330a4599"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// --- 2. UI ELEMENTS ---
+const grid = document.getElementById('matches-grid');
+const banner = document.getElementById('banner-img');
+const logo = document.getElementById('nav-logo');
+const splash = document.getElementById('splash-screen');
+
+// --- 3. LOAD SETTINGS (Banner/Logo) ---
+db.ref('settings').once('value', (snap) => {
+    const val = snap.val();
+    if(val){
+        if(val.banner) banner.src = val.banner;
+        if(val.logo) logo.src = val.logo;
+    }
+});
+
+// --- 4. LOAD MATCHES ---
+db.ref('matches').on('value', (snap) => {
+    const data = snap.val();
+    grid.innerHTML = ""; // Clear loader
+
+    if (!data) {
+        grid.innerHTML = "<div class='loading-text'>No matches available right now.</div>";
+        return;
+    }
+
+    // Convert Object to Array & Sort by Date (optional)
+    const matches = Object.entries(data).map(([key, val]) => ({ id: key, ...val }));
+    
+    matches.forEach(m => {
+        const defaultIcon = "https://via.placeholder.com/70?text=IPL";
+        const img1 = m.img1 || defaultIcon;
+        const img2 = m.img2 || defaultIcon;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="card-header">
+                <img src="${img1}" class="team-logo" alt="Team 1">
+                <span class="vs">VS</span>
+                <img src="${img2}" class="team-logo" alt="Team 2">
+            </div>
+            <div class="card-body">
+                <div class="match-title">${m.teams}</div>
+                <div class="match-meta">
+                    <span>📅 ${m.date} | ⏰ ${m.time || 'TBA'}</span>
+                    <span>🏟 ${m.stadium}</span>
+                </div>
+                <button class="book-btn" onclick="bookMatch('${m.id}')">Book Tickets</button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    // Remove splash screen after loading
+    setTimeout(() => splash.classList.add('hidden'), 500);
+});
+
+// --- 5. BOOKING FUNCTION ---
+function bookMatch(matchId) {
+    // Fetch the specific match data again to be safe, or find it from memory
+    // Here we will do a quick trick: Since we have the ID, we can fetch it once or pass data.
+    // Better way for this simple site: Retrieve from the DB snapshot we just displayed
+    // BUT simplest is:
+    
+    db.ref('matches/' + matchId).once('value', (snap) => {
+        const matchData = snap.val();
+        if(matchData){
+            // Save to LocalStorage
+            localStorage.setItem('selectedMatch', JSON.stringify(matchData));
+            // Go to Details Page
+            window.location.href = "match-details.html";
+        }
+    });
+}
+
+// Fallback: Remove splash if DB takes too long or fails
+setTimeout(() => splash.classList.add('hidden'), 3000);
+</script>
+
+</body>
+</html>
